@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>File(s) drag and drop uploading</title>
+    <style type="text/css">
+        td, th { border: 1px solid #CCC; }
+        table { border: 1px solid black; }
+        #dropbox:hover { cursor: pointer;}
+    </style>
+    <script>
+        function init() {
+            var dropbox;
+
+            dropbox = document.getElementById("dropbox");
+            dropbox.addEventListener("dragenter", dragenter, false);
+            dropbox.addEventListener("dragover", dragover, false);
+            dropbox.addEventListener("drop", drop, false);
+        }
+
+        function dragenter(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        function dragover(e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        function drop(e) {
+            e.stopPropagation();
+            e.preventDefault();
+
+            var dt = e.dataTransfer;
+            var files = dt.files;
+
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            var imageType = /image.*/;
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+
+//                if (!file.type.match(imageType)) {
+//                    continue;
+//                }
+
+                var img = document.createElement("img");
+                img.width = 80;
+                img.classList.add("obj");
+                img.file = file;
+
+                var progress = document.createElement("progress");
+                progress.value = 0;
+                progress.max = 100;
+                img.progress = progress;
+
+                var tr = document.createElement("tr");
+                var td = document.createElement('td');
+                td.appendChild(img);
+                tr.appendChild(td);
+                td = document.createElement('td');
+                td.appendChild(progress);
+                tr.appendChild(td);
+                var status = document.createElement('td');
+                status.innerHTML = "pending";
+                tr.appendChild(status);
+
+                preview.appendChild(tr); // Assuming that "preview" is a the div output where the content will be displayed.
+
+                var reader = new FileReader();
+                reader.onload = (function (aImg, aFile, aProgress, aStatus) {
+                    return function (e) {
+                        if (aFile.type.match(imageType)) {
+                            aImg.src = e.target.result;
+                        }
+
+                        new FileUpload(aFile, aProgress, aStatus);
+                    };
+                })(img, file, progress, status);
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function FileUpload(file, progress, status) {
+            var xhr = new XMLHttpRequest();
+            this.file = file;
+            this.progress = progress;
+            this.xhr = xhr;
+
+            var self = this;
+            xhr.upload.onloadstart = function (e) {
+                status.innerHTML = "uploading";
+            };
+            xhr.upload.onprogress = function (e) {
+                if (e.lengthComputable) {
+                    self.progress.value = Math.round((e.loaded * 100) / e.total);
+                }
+            };
+            xhr.upload.onload = function (e) {
+                self.progress.value = 100;
+            };
+
+            xhr.open("POST", window.location.href + "upload", true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == XMLHttpRequest.DONE) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        while (status.firstChild) {
+                            status.removeChild(status.firstChild);
+                        }
+                        var link = document.createElement('a');
+                        link.href = window.location.href + "file/" + file.name;
+                        link.target = "_blank";
+                        var text = document.createTextNode("success");
+                        link.appendChild(text);
+                        status.appendChild(link);
+                    }
+                    else {
+                        status.innerHTML = "fail";
+                    }
+                }
+
+                console.log(xhr.readyState + "," + xhr.status + "," + xhr.responseText)
+            };
+
+            var formData = new FormData();
+            formData.append("file", file, file.name);
+            formData.append("description", "Пользовательский файл");
+
+            xhr.send(formData);
+        }
+
+        function clickFiles() {
+            var el = document.getElementById("formFiles");
+            if (el) {
+                el.click();
+            }
+        }
+
+        window.addEventListener("load", init, false);
+
+    </script>
+</head>
+<body>
+
+<form>
+    <!--<input type="file" id="files" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)">-->
+    <input type="file" id="formFiles" multiple style="display:none" onchange="handleFiles(this.files)">
+</form>
+
+<div>
+    <div id="dropbox" style="margin:30px; width:500px; height:300px; border:1px dotted grey;" onclick="clickFiles()">Drag & drop your file here...</div>
+</div>
+
+<table id="preview">
+    <tr>
+        <th>Preview</th>
+        <th>Progress</th>
+        <th>Status</th>
+    </tr>
+</table>
+
+</body>
+</html>
