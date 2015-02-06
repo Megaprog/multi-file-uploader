@@ -2,7 +2,7 @@ package uploader.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
@@ -23,8 +22,8 @@ import java.util.Optional;
 public class MultipartUploaderController {
     private static final Logger log = LoggerFactory.getLogger(MultipartUploaderController.class);
 
-    @Autowired
-    ServletContext servletContext;
+    @Value("#{servletContext.getRealPath('/')}")
+    protected String uploadPath;
 
     @RequestMapping(value="/upload", method= RequestMethod.POST)
     @ResponseBody
@@ -34,7 +33,7 @@ public class MultipartUploaderController {
         log.info(file.getContentType());
         log.info("" + file.getSize());
 
-        final File dest = new File(servletContext.getRealPath("/"), file.getOriginalFilename());
+        final File dest = new File(uploadPath, file.getOriginalFilename());
         log.info(dest.getAbsolutePath());
 
         file.transferTo(dest);
@@ -43,7 +42,7 @@ public class MultipartUploaderController {
     @RequestMapping(value="/file/{name:.*}", method= RequestMethod.GET)
     @ResponseBody
     public FileSystemResource fileDownload(@PathVariable("name") String name, HttpServletResponse response) {
-        final File source = new File(servletContext.getRealPath("/"), name);
+        final File source = new File(uploadPath, name);
         if (!source.exists()) {
             response.setStatus(HttpStatus.NOT_FOUND.value());
             return null;
